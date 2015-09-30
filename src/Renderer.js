@@ -53,10 +53,18 @@ define(function(require, exports, module) {
      * @this {Concerto.Renderer}
      */
     Renderer.prototype.addPage = function addPage() {
-        var $div = $('<div>');
+        var $div;
+        if (this.backends === Vex.Flow.Renderer.Backends.CANVAS) {
+          $div = $('<canvas ' + 'width="'
+            + this.pageSize.width + '" height="'
+            + this.pageSize.height + '"></canvas>');
+        }
+        else {
+          $div = $('<div>');
 
-        $div.css('width', this.pageSize.width)
-            .css('height', this.pageSize.height);
+          $div.css('width', this.pageSize.width)
+              .css('height', this.pageSize.height);
+        }
 
         $div.addClass('concerto-page');
 
@@ -116,10 +124,18 @@ define(function(require, exports, module) {
                 continue;
 
             var $dom = this.doms[i];
-            var $svg = $dom.find('svg');
-            $svg.empty();
-            $svg.attr('width', this.pageSize.width)
-                .attr('height', this.pageSize.height);
+            if (this.backends === Vex.Flow.Renderer.Backends.CANVAS) {
+              var $canvas = $dom.find('canvas');
+              $canvas.empty();
+              $canvas.attr('width', this.pageSize.width)
+                  .attr('height', this.pageSize.height);
+            }
+            else {
+              var $svg = $dom.find('svg');
+              $svg.empty();
+              $svg.attr('width', this.pageSize.width)
+                  .attr('height', this.pageSize.height);
+            }
         }
     };
 
