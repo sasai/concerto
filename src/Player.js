@@ -9,7 +9,7 @@ define(function(require, exports, module) {
     /**
      * @callback callback
      */
-
+    var Vex = require('vexflow');
     var Midi = require('jsmidgen');
     var MIDI = require('midi');
     var L = require('js-logger').get('Player');
@@ -382,17 +382,30 @@ define(function(require, exports, module) {
         }
 
         var item = this.queue.pop();
+        var b = this.barSize;
         if (item.newPage) {
             // next page
             this.page++;
-            this.ctx = this.renderer.getContext(this.page).paper;
-            this.bar.remove();
+
+            if (this.renderer.backends === Vex.Flow.Renderer.Backends.CANVAS) {
+              this.ctx.clearRect(this.prevBarX-1, this.prevBarY-1, b.w+2, b.h+2);
+              this.ctx = this.renderer.getContext(this.page);
+            }
+            else {
+              this.ctx = this.renderer.getContext(this.page).paper;
+              this.bar.remove();
+            }
             this.bar = _createBar.call(this);
         }
 
         if (item.newMeasure) {
             this.measureCount++;
-            this.barY = this.topMeasures[this.measureCount]['top-line-y'] - 20;
+            if (this.renderer.backends === Vex.Flow.Renderer.Backends.CANVAS) {
+              this.barY = this.bottomMeasures[this.measureCount]['bottom-line-y'] + 40;
+            }
+            else {
+              this.barY = this.topMeasures[this.measureCount]['top-line-y'] - 20;
+            }
         }
 
         var note = item.note;
@@ -406,21 +419,39 @@ define(function(require, exports, module) {
 
         var x = note['staveNote'].note_heads[0].getAbsoluteX();
 
-        this.bar.attr({
+        if (this.renderer.backends === Vex.Flow.Renderer.Backends.CANVAS) {
+          this.ctx.clearRect(this.prevBarX-1, this.prevBarY-1, b.w+2, b.h+2);
+          this.ctx.setFillStyle('rgba(30,30,150,0.4)');
+          this.ctx.fillRect(x - 2, this.barY, b.w, b.h);
+          this.prevBarX = x - 2;
+          this.prevBarY = this.barY;
+        }
+        else {
+          this.bar.attr({
             x: x - 2,
             y: this.barY
-        });
+          });
+        }
     }
 
     function _createBar() {
         var x = -100;
         var b = this.barSize;
-        var bar = this.ctx.rect(x, this.barY, b.w, b.h);
-        bar.attr({
+        var bar;
+        if (this.renderer.backends === Vex.Flow.Renderer.Backends.CANVAS) {
+          this.ctx.setFillStyle('rgba(30,30,150,0.4)');
+          bar = this.ctx.fillRect(x, this.barY, b.w, b.h);
+          this.prevBarX = x;
+          this.prevBarY = this.barY;
+        }
+        else {
+          bar = this.ctx.rect(x, this.barY, b.w, b.h);
+          bar.attr({
             fill: '#3333cc',
             opacity: 0.4,
             stroke: '#3333cc'
-        });
+          });
+        }
         return bar;
     }
 
@@ -465,12 +496,23 @@ define(function(require, exports, module) {
         this.topMeasures = musicjson['part'][0]['measure'];
         this.queue = new NoteQueue(musicjson);
         this.page = 0;
-        this.ctx = this.renderer.getContext(this.page).paper;
+        if (this.renderer.backends === Vex.Flow.Renderer.Backends.CANVAS) {
+          this.ctx = this.renderer.getContext(this.page);
+        }
+        else {
+          this.ctx = this.renderer.getContext(this.page).paper;
+        }
         this.barSize = getBarSize.call(this, musicjson);
         this.bar = _createBar.call(this);
         this.measureCount = 0;
-        this.barY = this.topMeasures[this.measureCount]['top-line-y'] - 20;
-
+        if (this.renderer.backends === Vex.Flow.Renderer.Backends.CANVAS) {
+          var _parts = musicjson['part'];
+          this.bottomMeasures = musicjson['part'][_parts.length - 1]['measure'];
+          this.barY = this.bottomMeasures[this.measureCount]['bottom-line-y'] + 40;
+        }
+        else {
+          this.barY = this.topMeasures[this.measureCount]['top-line-y'] - 20;
+        }
         function listener(data) {
             _playCallback.call(this, data, callback);
         }
@@ -482,6 +524,9 @@ define(function(require, exports, module) {
             var topMeasure = parts[0]['measure'][0];
             var bottomMeasure = parts[parts.length - 1]['measure'][0];
             var h = bottomMeasure['bottom-line-y'] - topMeasure['top-line-y'] + 40;
+            if (this.renderer.backends === Vex.Flow.Renderer.Backends.CANVAS) {
+              h = 14;
+            }
             return {
                 w: w,
                 h: h
