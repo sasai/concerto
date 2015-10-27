@@ -440,7 +440,7 @@ define(function(require, exports, module) {
         var bar;
         if (this.renderer.backends === Vex.Flow.Renderer.Backends.CANVAS) {
           this.ctx.setFillStyle('rgba(30,30,150,0.4)');
-          bar = this.ctx.fillRect(x, this.barY, b.w, b.h);
+          this.ctx.fillRect(x, this.barY, b.w, b.h);
           this.prevBarX = x;
           this.prevBarY = this.barY;
         }
@@ -543,6 +543,12 @@ define(function(require, exports, module) {
 
         this.queue = undefined;
         this.onPlaying = false;
+
+        if (this.renderer.backends === Vex.Flow.Renderer.Backends.CANVAS) {
+          var b = this.barSize;
+          this.ctx.clearRect(this.prevBarX-1, this.prevBarY-1, b.w+2, b.h+2);
+          this.ctx = this.renderer.getContext(this.page);
+        }
 
         if (this.bar)
             this.bar.remove();
